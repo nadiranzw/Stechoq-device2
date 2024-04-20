@@ -1,69 +1,78 @@
 #include <PZEM004Tv30.h>
 
-#if !defined(RX1) && !defined(TX1)
-#define RX1 26
-#define TX1 25
+#if !defined(pRX) && !defined(pTX)
+#define pRX 26
+#define pTX 25
 #endif
 
 #if !defined(pzemSerial)
 #define pzemSerial Serial2
-#endif
+#endif 
 
 #if defined(ESP32)
-PZEM004Tv30 pzem1(pzemSerial, RX1, TX1);
+PZEM004Tv30 pzems[2];
 #elif defined(ESP8266)
-//PZEM004Tv30 pzem1(Serial1);
+//PZEM004Tv30 pzems[i](Serial1);
 #else
-PZEM004Tv30 pzem1(pzemSerial);
+PZEM004Tv30 pzems(pzemSerial);
 #endif
 
-struct var {
+struct var{
   float volt, curr, freq, enrgy, power, pf;
 };
 
-struct var dev1;
+struct var dev[2];
+
+int i; // index 
 
 void printSerialPZEM(){
-  Serial.println("---------PZEM 1---------");
-  Serial.printf("Voltage    : %.2f\ V\n", dev1.volt);
-  Serial.printf("Current    : %.2f\ A\n", dev1.curr);
-  Serial.printf("Frequency  : %.2f\ Hz\n", dev1.freq);
-  Serial.printf("Energy     : %.2f\ kWh\n", dev1.enrgy);
-  Serial.printf("Power      : %.2f\ W\n", dev1.power);
-  Serial.printf("PF         : %.2f\ \n\n", dev1.pf);
+  Serial.printf("Voltage    : %.2f\ V\n", dev[i].volt);
+  Serial.printf("Current    : %.2f\ A\n", dev[i].curr);
+  Serial.printf("Frequency  : %.2f\ Hz\n", dev[i].freq);
+  Serial.printf("Energy     : %.2f\ kWh\n", dev[i].enrgy);
+  Serial.printf("Power      : %.2f\ W\n", dev[i].power);
+  Serial.printf("PF         : %.2f\ \n\n", dev[i].pf);
 }
 
-void setup() {
+
+void setup(){
   Serial.begin(115200);
-  // Uncomment in order to reset the internal energy counter
-  // pzem1.resetEnergy();
+
+  for(int i=0; i<=2; i++){
+    #if defined(ESP32)
+    pzems[i] = PZEM004Tv30(pzemSerial, pRX, pTX, 0x10 + i);
+    #endif
+  }
 }
 
-void loop() {
-  Serial.print("Custom Address:");
-  Serial.println(pzem1.readAddress(), HEX);
+void loop(){
+  for (i=0; i<=2; i++){
+    Serial.printf("---------PZEM %d\---------", i);
+    Serial.print("Address: ");
+    Serial.println(pzems[i].getAddress(), HEX);
 
-  dev1.volt = pzem1.voltage();
-  dev1.curr = pzem1.current();
-  dev1.freq = pzem1.frequency();
-  dev1.enrgy = pzem1.energy();
-  dev1.power = pzem1.power();
-  dev1.pf = pzem1.pf();
+    dev[i].volt = pzems[i].voltage();
+    dev[i].curr = pzems[i].current();
+    dev[i].freq = pzems[i].frequency();
+    dev[i].enrgy = pzems[i].energy();
+    dev[i].power = pzems[i].power();
+    dev[i].pf = pzems[i].pf();
 
-  if(isnan(dev1.volt)){
-      dev1.volt = 0;
-  } if (isnan(dev1.curr)){
-      dev1.curr = 0;
-  } if (isnan(dev1.freq)){
-      dev1.freq = 0;
-  } if (isnan(dev1.enrgy)){
-      dev1.enrgy = 0;
-  } if (isnan(dev1.power)){
-      dev1.power = 0;
-  } if (isnan(dev1.pf)){
-      dev1.pf = 0;
+    if(isnan(dev[i].volt)){
+        dev[i].volt = 0;
+    } if (isnan(dev[i].curr)){
+        dev[i].curr = 0;
+    } if (isnan(dev[i].freq)){
+        dev[i].freq = 0;
+    } if (isnan(dev[i].enrgy)){
+        dev[i].enrgy = 0;
+    } if (isnan(dev[i].power)){
+        dev[i].power = 0;
+    } if (isnan(dev[i].pf)){
+        dev[i].pf = 0;
+    }
+
+    printSerialPZEM();
+    delay(2000);
   }
-
-  printSerialPZEM();
-  delay(2000);
 }
