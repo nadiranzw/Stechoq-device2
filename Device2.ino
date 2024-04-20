@@ -1,78 +1,85 @@
 #include <PZEM004Tv30.h>
 
-#if !defined(pRX) && !defined(pTX)
-#define pRX 26
-#define pTX 25
+#if !defined(PZEM_RX_PIN) && !defined(PZEM_TX_PIN)
+#define PZEM_RX_PIN 25
+#define PZEM_TX_PIN 26
 #endif
 
-#if !defined(pzemSerial)
-#define pzemSerial Serial2
-#endif 
-
-#if defined(ESP32)
-PZEM004Tv30 pzems[2];
-#elif defined(ESP8266)
-//PZEM004Tv30 pzems[i](Serial1);
-#else
-PZEM004Tv30 pzems(pzemSerial);
+#if !defined(PZEM_SERIAL)
+#define PZEM_SERIAL Serial2
 #endif
 
-struct var{
-  float volt, curr, freq, enrgy, power, pf;
-};
+#define NUM_PZEMS 3
 
-struct var dev[2];
+PZEM004Tv30 pzems[NUM_PZEMS];
 
-int i; // index 
+// Uncomment USE_SOFTWARE_SERIAL in order to enable Softare serial
+// #define USE_SOFTWARE_SERIAL
 
-void printSerialPZEM(){
-  Serial.printf("Voltage    : %.2f\ V\n", dev[i].volt);
-  Serial.printf("Current    : %.2f\ A\n", dev[i].curr);
-  Serial.printf("Frequency  : %.2f\ Hz\n", dev[i].freq);
-  Serial.printf("Energy     : %.2f\ kWh\n", dev[i].enrgy);
-  Serial.printf("Power      : %.2f\ W\n", dev[i].power);
-  Serial.printf("PF         : %.2f\ \n\n", dev[i].pf);
-}
+#if defined(USE_SOFTWARE_SERIAL) && defined(ESP32)
+    #error "Can not use SoftwareSerial with ESP32"
+#elif defined(USE_SOFTWARE_SERIAL)
+    #include <SoftwareSerial.h>
+    SoftwareSerial pzemSWSerial(PZEM_RX_PIN, PZEM_TX_PIN);
+#endif
 
 
-void setup(){
-  Serial.begin(115200);
+void setup() {
+    Serial.begin(115200);
 
-  for(int i=0; i<=2; i++){
-    #if defined(ESP32)
-    pzems[i] = PZEM004Tv30(pzemSerial, pRX, pTX, 0x10 + i);
+    // For each PZEM, initialize it
+    for(int i = 0; i < NUM_PZEMS; i++)
+    {
+    #if defined(USE_SOFTWARE_SERIAL)
+            // Initialize the PZEMs with Software Serial
+            pzems[i] = PZEM004Tv30(pzemSWSerial, 0x10 + i);
+    #elif defined(ESP32)
+            // Initialize the PZEMs with Hardware Serial2 on RX/TX pins 16 and 17
+            pzems[i] = PZEM004Tv30(PZEM_SERIAL, PZEM_RX_PIN, PZEM_TX_PIN, 0x10 + i);
+    #else
+            pzems[i] = PZEM004Tv30(PZEM_SERIAL, 0x10 + i);
     #endif
-  }
+    }
 }
 
-void loop(){
-  for (i=0; i<=2; i++){
-    Serial.printf("---------PZEM %d\---------", i);
-    Serial.print("Address: ");
-    Serial.println(pzems[i].getAddress(), HEX);
+void loop() {
+    for(int i = 0; i < NUM_PZEMS; i++){
+        Serial.print("PZEM ");
+        Serial.print(i);
+        Serial.print(" - Address:");
+        Serial.println(pzems[i].getAddress(), HEX);
+        Serial.println("===================");
 
-    dev[i].volt = pzems[i].voltage();
-    dev[i].curr = pzems[i].current();
-    dev[i].freq = pzems[i].frequency();
-    dev[i].enrgy = pzems[i].energy();
-    dev[i].power = pzems[i].power();
-    dev[i].pf = pzems[i].pf();
+        float voltage = pzems[i].voltage();
+        float current = pzems[i].current();
+        float power = pzems[i].power();
+        float energy = pzems[i].energy();
+        float frequency = pzems[i].frequency();
+        float pf = pzems[i].pf();
 
-    if(isnan(dev[i].volt)){
-        dev[i].volt = 0;
-    } if (isnan(dev[i].curr)){
-        dev[i].curr = 0;
-    } if (isnan(dev[i].freq)){
-        dev[i].freq = 0;
-    } if (isnan(dev[i].enrgy)){
-        dev[i].enrgy = 0;
-    } if (isnan(dev[i].power)){
-        dev[i].power = 0;
-    } if (isnan(dev[i].pf)){
-        dev[i].pf = 0;
+          if(isnan(voltage)){
+            voltage = 0;
+        } if (isnan(current)) {
+            current = 0;
+        } if (isnan(power)) {
+            power = 0;
+        } if (isnan(energy)) {
+            energy = 0;
+        } if (isnan(frequency)) {
+            frequency = 0;
+        } if (isnan(pf)) {
+            pf = 0;
+        }
+
+        Serial.print("Voltage   : ");      Serial.print(voltage);      Serial.println(" V");
+        Serial.print("Current   : ");      Serial.print(current);      Serial.println(" A");
+        Serial.print("Power     : ");      Serial.print(power);        Serial.println(" W");
+        Serial.print("Energy    : ");      Serial.print(energy,3);     Serial.println(" kWh");
+        Serial.print("Frequency : ");      Serial.print(frequency, 1); Serial.println(" Hz");
+        Serial.print("PF        : ");      Serial.println(pf);
+        Serial.println();
     }
 
-    printSerialPZEM();
+    Serial.println();
     delay(2000);
-  }
 }
