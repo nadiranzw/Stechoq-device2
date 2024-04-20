@@ -9,9 +9,8 @@
 #define PZEM_SERIAL Serial2
 #endif
 
-#define NUM_PZEMS 3
-
-PZEM004Tv30 pzems[NUM_PZEMS];
+#define num 3
+PZEM004Tv30 pzems[num];
 
 // Uncomment USE_SOFTWARE_SERIAL in order to enable Softare serial
 // #define USE_SOFTWARE_SERIAL
@@ -23,12 +22,27 @@ PZEM004Tv30 pzems[NUM_PZEMS];
     SoftwareSerial pzemSWSerial(pRX, pTX);
 #endif
 
+int i;
+struct var{
+  float volt, curr, freq, enrgy, power, pf;
+} dev[num];
+
+
+void printSerial(){
+  Serial.printf("Voltage    : %.2f\ V\n", dev[i].volt);
+  Serial.printf("Current    : %.2f\ A\n", dev[i].curr);
+  Serial.printf("Frequency  : %.2f\ Hz\n", dev[i].freq);
+  Serial.printf("Energy     : %.2f\ kWh\n", dev[i].enrgy);
+  Serial.printf("Power      : %.2f\ W\n", dev[i].power);
+  Serial.printf("PF         : %.2f\ \n\n", dev[i].pf);
+}
+
 
 void setup() {
     Serial.begin(115200);
 
     // For each PZEM, initialize it
-    for(int i = 0; i < NUM_PZEMS; i++){
+    for(int i = 0; i < num; i++){
     #if defined(USE_SOFTWARE_SERIAL)
             // Initialize the PZEMs with Software Serial
             pzems[i] = PZEM004Tv30(pzemSWSerial, 0x10 + i);
@@ -42,42 +56,34 @@ void setup() {
 }
 
 void loop() {
-    for(int i = 0; i < NUM_PZEMS; i++){
+    for(i = 0; i < num; i++){
         Serial.print("PZEM ");
         Serial.print(i);
         Serial.print(" - Address:");
         Serial.println(pzems[i].getAddress(), HEX);
         Serial.println("===================");
 
-        float voltage = pzems[i].voltage();
-        float current = pzems[i].current();
-        float power = pzems[i].power();
-        float energy = pzems[i].energy();
-        float frequency = pzems[i].frequency();
-        float pf = pzems[i].pf();
+        dev[i].volt = pzems[i].voltage();
+        dev[i].curr = pzems[i].current();
+        dev[i].freq = pzems[i].frequency();
+        dev[i].power = pzems[i].power();
+        dev[i].enrgy = pzems[i].energy();
+        dev[i].pf = pzems[i].pf();
 
-          if(isnan(voltage)){
-            voltage = 0;
-        } if (isnan(current)) {
-            current = 0;
-        } if (isnan(power)) {
-            power = 0;
-        } if (isnan(energy)) {
-            energy = 0;
-        } if (isnan(frequency)) {
-            frequency = 0;
-        } if (isnan(pf)) {
-            pf = 0;
+          if(isnan(dev[i].volt)){
+            dev[i].volt = 0;
+        } if (isnan(dev[i].curr)) {
+            dev[i].curr = 0;
+        } if (isnan(dev[i].power)) {
+            dev[i].power = 0;
+        } if (isnan(dev[i].enrgy)) {
+            dev[i].enrgy = 0;
+        } if (isnan(dev[i].freq)) {
+            dev[i].freq = 0;
+        } if (isnan(dev[i].pf)) {
+            dev[i].pf = 0;
         }
-
-        Serial.print("Voltage   : ");      Serial.print(voltage);      Serial.println(" V");
-        Serial.print("Current   : ");      Serial.print(current);      Serial.println(" A");
-        Serial.print("Power     : ");      Serial.print(power);        Serial.println(" W");
-        Serial.print("Energy    : ");      Serial.print(energy,3);     Serial.println(" kWh");
-        Serial.print("Frequency : ");      Serial.print(frequency, 1); Serial.println(" Hz");
-        Serial.print("PF        : ");      Serial.println(pf);
-        Serial.println();
+        printSerial();
     }
-
-    Serial.println();
     delay(2000);
+}
