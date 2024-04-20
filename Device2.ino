@@ -32,7 +32,7 @@ void printSerialPZEM(){
   Serial.printf("Power      : %.2f\ W\n", dev1.power);
   Serial.printf("PF         : %.2f\ \n\n", dev1.pf);
 }
-        
+
 void setup() {
   Serial.begin(115200);
   // Uncomment in order to reset the internal energy counter
@@ -63,7 +63,7 @@ void loop() {
   } if (isnan(dev1.pf)){
       dev1.pf = 0;
   }
-  
+
   printSerialPZEM();
   delay(2000);
 }
